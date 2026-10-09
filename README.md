@@ -4,7 +4,7 @@
 
 * Name 1 – ID
 * Name 2 – ID
-* Name 3 – ID
+* Goot Almghais – 446203233
 
 ## Who Did What
 
@@ -22,7 +22,7 @@
 * RideSharingSystem: driver and scheduling methods
 * Main: options 5–7
 
-### Name 3
+### Goot Almghais
 * Ride.java
 * PrivateRide.java
 * SharedRide.java
