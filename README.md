@@ -1,7 +1,5 @@
 # CSC 212 – Ride-Sharing System (Phase 1)
 
-# CSC 212 – Ride-Sharing System (Phase 1)
-
 ## Team
 
 * Name 1 – ID
