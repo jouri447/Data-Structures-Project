@@ -12,10 +12,14 @@ public class RiderList implements IRiderList {
         count = 0;
     }
 
-    // Inserts the rider in sorted order by ID; fails if the ID already exists
+    // Inserts the rider in sorted order by ID; fails if the ID or email already exists
     public boolean add(IRider rider) {
         if (rider == null)
             return false;
+        
+        if (findByEmail(rider.getEmail()) != null) {
+    return false;
+}
 
         if (riders.empty()) {
             riders.insert(rider);
