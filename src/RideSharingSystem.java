@@ -14,7 +14,91 @@ public class RideSharingSystem implements IRideSharingSystem {
         drivers = new DriverList();
         rides = new RideList();
     }
-    
+
+    // Loads riders from a CSV file (riderId,name,email,phoneNumber,homeCity)
+    public boolean loadRidersFromCSV(String ridersFilePath) {
+        try {
+            Scanner file = new Scanner(new File(ridersFilePath));
+            boolean allLoaded = true;
+
+            // Reads the file line by line.
+            while (file.hasNextLine()) {
+                String line = file.nextLine().trim();
+
+                // Skips empty lines.
+                if (line.isEmpty()) {
+                    continue;
+                }
+
+                String[] f = line.split(",");
+
+                try {
+                    // The Rider constructor validates the phone number.
+                    IRider rider = new Rider(Integer.parseInt(f[0].trim()), f[1].trim(), f[2].trim(), f[3].trim(), f[4].trim());
+
+                    // Marks the loading as failed if the rider was not added.
+                    if (!addRider(rider)) {
+                        allLoaded = false;
+                    }
+                }
+                catch (Exception e) {
+                    // Continues reading if a line has invalid data.
+                    allLoaded = false;
+                }
+            }
+
+            file.close();
+
+            // Returns true if all riders were loaded successfully.
+            return allLoaded;
+        }
+        catch (FileNotFoundException e) {
+            // Returns false if the file cannot be found.
+            return false;
+        }
+    }
+
+    // Adds a rider; fails if the rider is invalid or the ID/email already exists
+    public boolean addRider(IRider rider) {
+        // Rejects a missing rider or missing name, email, or home city.
+        if (rider == null || isBlank(rider.getName()) || isBlank(rider.getEmail()) || isBlank(rider.getHomeCity())) {
+            return false;
+        }
+
+        // RiderList rejects duplicate IDs and emails.
+        return riders.add(rider);
+    }
+
+    // Returns true if the text is null or only spaces
+    private boolean isBlank(String text) {
+        return text == null || text.trim().isEmpty();
+    }
+
+    // Searches for a rider by ID
+    public IRider searchRiderById(int riderId) {
+        return riders.findById(riderId);
+    }
+
+    // Searches for a rider by email
+    public IRider searchRiderByEmail(String email) {
+        return riders.findByEmail(email);
+    }
+
+    // Searches for all riders whose full name exactly matches the given name
+    public LinkedList<IRider> searchRidersByName(String fullName) {
+        return riders.findByName(fullName);
+    }
+
+    // Searches for all riders from the given home city
+    public LinkedList<IRider> searchRidersByHomeCity(String homeCity) {
+        return riders.findByHomeCity(homeCity);
+    }
+
+    // Returns all riders sorted by ID
+    public LinkedList<IRider> getAllRiders() {
+        return riders.getAll();
+    }
+
 // Loads rides from a CSV file and schedules each ride
 public boolean loadRidesFromCSV(String ridesFilePath) {
 try {
