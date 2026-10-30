@@ -110,21 +110,13 @@ while (file.hasNextLine()) {
 String[] f = file.nextLine().split(",");
 
 try {
-// Splits the pickup date and time into separate values.
-String[] pickup = f[2].split("[/ :]");
-
-// Creates the pickup time using the DateTime constructor.
-IDateTime pickupTime = new DateTime(Integer.parseInt(pickup[2]), Integer.parseInt(pickup[0]), Integer.parseInt(pickup[1]), Integer.parseInt(pickup[3]), Integer.parseInt(pickup[4]));
-
-// Splits the dropoff date and time into separate values.
-String[] dropoff = f[3].split("[/ :]");
-
-// Creates the dropoff time using the DateTime constructor.
-IDateTime dropoffTime = new DateTime(Integer.parseInt(dropoff[2]), Integer.parseInt(dropoff[0]), Integer.parseInt(dropoff[1]), Integer.parseInt(dropoff[3]), Integer.parseInt(dropoff[4]));
+// Creates the pickup and dropoff times from the text "MM/DD/YYYY HH:MM".
+IDateTime pickupTime = new DateTime(f[2]);
+IDateTime dropoffTime = new DateTime(f[3]);
 
 // Gets the driver ID and separates the rider IDs.
-int driverId = Integer.parseInt(f[5]);
-String[] ids = f[6].split(";");
+int driverId = Integer.parseInt(f[5].trim());
+String[] ids = f[6].trim().split(";");
 
 boolean scheduled = false;
 
@@ -194,8 +186,8 @@ if (ride.hasRider(riderId)) {
 
 if (ride instanceof IPrivateRide) {
 
-// Removes the private ride completely.
-rides.removeRideById(ride.getRideId());
+// Removes the private ride completely (also from the driver's history).
+deleteRide(ride);
 }
 else if (ride instanceof ISharedRide) {
 ISharedRide sharedRide = (ISharedRide) ride;
@@ -205,7 +197,7 @@ sharedRide.removeParticipantById(riderId);
 
 // Removes the shared ride if no participants remain.
 if (sharedRide.isEmpty()) {
-rides.removeRideById(ride.getRideId());
+deleteRide(ride);
 }
 }
 }
@@ -245,8 +237,8 @@ IRide ride = allRides.retrieve();
 // Checks if the ride belongs to this driver
 if (ride.getDriver().getId() == driverId) {
 
-// Removes the ride from the ride list
-rides.removeRideById(ride.getRideId());
+// Removes the ride from the ride list and from the riders' histories
+deleteRide(ride);
 }
 
 // Stops after checking the last ride
@@ -351,9 +343,288 @@ public LinkedList<IRide> getAllRidesAlphabetically() {
 // Gets the sorted rides from RideList
 return rides.getAllAlphabetically();
 }
-    
-    
-    
-    
+
+    // Loads drivers from a CSV file (driverId,name,phoneNumber,vehiclePlate,vehicleType)
+    public boolean loadDriversFromCSV(String driversFilePath) {
+        try {
+            Scanner file = new Scanner(new File(driversFilePath));
+            boolean allLoaded = true;
+
+            // Reads the file line by line.
+            while (file.hasNextLine()) {
+                String line = file.nextLine().trim();
+
+                // Skips empty lines.
+                if (line.isEmpty()) {
+                    continue;
+                }
+
+                String[] f = line.split(",");
+
+                try {
+                    // Converts the text (e.g. "SUV") to the VehicleType enum.
+                    VehicleType type = VehicleType.valueOf(f[4].trim());
+
+                    // The Driver constructor validates the phone number and plate.
+                    IDriver driver = new Driver(Integer.parseInt(f[0].trim()), f[1].trim(), f[2].trim(), f[3].trim(), type);
+
+                    // Marks the loading as failed if the driver was not added.
+                    if (!addDriver(driver)) {
+                        allLoaded = false;
+                    }
+                }
+                catch (Exception e) {
+                    // Continues reading if a line has invalid data.
+                    allLoaded = false;
+                }
+            }
+
+            file.close();
+
+            // Returns true if all drivers were loaded successfully.
+            return allLoaded;
+        }
+        catch (FileNotFoundException e) {
+            // Returns false if the file cannot be found.
+            return false;
+        }
+    }
+
+    // Adds a driver; fails if the driver is invalid or the ID/plate already exists
+    public boolean addDriver(IDriver driver) {
+        // Rejects a missing driver or a missing name.
+        if (driver == null || isBlank(driver.getName())) {
+            return false;
+        }
+
+        // DriverList rejects duplicate IDs and duplicate vehicle plates.
+        return drivers.add(driver);
+    }
+
+    // Searches for a driver by ID
+    public IDriver searchDriverById(int driverId) {
+        return drivers.findById(driverId);
+    }
+
+    // Searches for a driver by vehicle plate
+    public IDriver searchDriverByVehiclePlate(String vehiclePlate) {
+        return drivers.findByVehiclePlate(vehiclePlate);
+    }
+
+    // Searches for all drivers with the given vehicle type
+    public LinkedList<IDriver> searchDriversByVehicleType(VehicleType vehicleType) {
+        return drivers.findByVehicleType(vehicleType);
+    }
+
+    // Returns all drivers sorted by ID
+    public LinkedList<IDriver> getAllDrivers() {
+        return drivers.getAll();
+    }
+
+    // Schedules a private ride for one rider with one driver
+    public boolean schedulePrivateRide(String pickupLocation, IDateTime pickupTime, IDateTime dropoffTime, String dropoffLocation, int riderId, int driverId) {
+
+        // Checks that the times are valid (pickup must be before dropoff).
+        if (!validTimes(pickupTime, dropoffTime)) {
+            return false;
+        }
+
+        // The rider and the driver must exist.
+        IRider rider = riders.findById(riderId);
+        IDriver driver = drivers.findById(driverId);
+
+        if (rider == null || driver == null) {
+            return false;
+        }
+
+        // The ride must not overlap with the rider's or the driver's other rides.
+        if (riderHasConflict(riderId, pickupTime, dropoffTime) || driverHasConflict(driverId, pickupTime, dropoffTime)) {
+            return false;
+        }
+
+        // Creates the ride and adds it to the ride list.
+        IPrivateRide ride = new PrivateRide(pickupLocation, pickupTime, dropoffTime, dropoffLocation, driver, rider);
+        rides.addRide(ride);
+
+        // Saves the ride in the rider's and the driver's ride history.
+        rider.getRideHistory().insert(ride);
+        driver.getRideHistory().insert(ride);
+
+        return true;
+    }
+
+    // Schedules a shared ride for several riders with one driver
+    public boolean scheduleSharedRide(String pickupLocation, IDateTime pickupTime, IDateTime dropoffTime, String dropoffLocation, int[] riderIds, int driverId) {
+
+        // Checks that the times are valid and there are at least two riders.
+        if (!validTimes(pickupTime, dropoffTime) || riderIds == null || riderIds.length < 2) {
+            return false;
+        }
+
+        // The driver must exist and must not have an overlapping ride.
+        IDriver driver = drivers.findById(driverId);
+
+        if (driver == null || driverHasConflict(driverId, pickupTime, dropoffTime)) {
+            return false;
+        }
+
+        // Checks every rider BEFORE creating the ride, so nothing is added if one fails.
+        for (int i = 0; i < riderIds.length; i++) {
+
+            // Every rider must exist.
+            if (riders.findById(riderIds[i]) == null) {
+                return false;
+            }
+
+            // The same rider cannot be listed twice.
+            for (int j = 0; j < i; j++) {
+                if (riderIds[j] == riderIds[i]) {
+                    return false;
+                }
+            }
+
+            // Every rider must be free at this time.
+            if (riderHasConflict(riderIds[i], pickupTime, dropoffTime)) {
+                return false;
+            }
+        }
+
+        // Creates the shared ride and adds every rider as a participant.
+        ISharedRide ride = new SharedRide(pickupLocation, pickupTime, dropoffTime, dropoffLocation, driver);
+
+        for (int i = 0; i < riderIds.length; i++) {
+            IRider rider = riders.findById(riderIds[i]);
+            ride.addParticipant(rider);
+
+            // Saves the ride in each rider's history.
+            rider.getRideHistory().insert(ride);
+        }
+
+        // Adds the ride to the ride list and the driver's history.
+        rides.addRide(ride);
+        driver.getRideHistory().insert(ride);
+
+        return true;
+    }
+
+    // Deletes a ride from the ride list and from the history of its driver and riders
+    private void deleteRide(IRide ride) {
+        rides.removeRideById(ride.getRideId());
+
+        // Removes the ride from the driver's history.
+        removeFromHistory(ride.getDriver().getRideHistory(), ride.getRideId());
+
+        if (ride instanceof IPrivateRide) {
+            // Removes the ride from the rider's history.
+            IRider rider = ((IPrivateRide) ride).getRider();
+            removeFromHistory(rider.getRideHistory(), ride.getRideId());
+        }
+        else if (ride instanceof ISharedRide) {
+            // Removes the ride from every remaining participant's history.
+            LinkedList<IRider> participants = ((ISharedRide) ride).getParticipants();
+
+            if (!participants.empty()) {
+                participants.findFirst();
+
+                while (true) {
+                    removeFromHistory(participants.retrieve().getRideHistory(), ride.getRideId());
+
+                    if (participants.last()) {
+                        break;
+                    }
+
+                    participants.findNext();
+                }
+            }
+        }
+    }
+
+    // Removes the ride with this ID from a person's ride history
+    private void removeFromHistory(LinkedList<IRide> history, int rideId) {
+        if (history.empty()) {
+            return;
+        }
+
+        history.findFirst();
+
+        while (true) {
+            if (history.retrieve().getRideId() == rideId) {
+                history.remove();
+                return;
+            }
+
+            if (history.last()) {
+                return;
+            }
+
+            history.findNext();
+        }
+    }
+
+    // Returns true if both times exist and the pickup is before the dropoff
+    private boolean validTimes(IDateTime pickupTime, IDateTime dropoffTime) {
+        return pickupTime != null && dropoffTime != null && pickupTime.compareTo(dropoffTime) < 0;
+    }
+
+    // Two rides overlap when  pickup1 < dropoff2  AND  pickup2 < dropoff1
+    private boolean overlaps(IRide ride, IDateTime pickupTime, IDateTime dropoffTime) {
+        return ride.getPickupTime().compareTo(dropoffTime) < 0 && pickupTime.compareTo(ride.getDropoffTime()) < 0;
+    }
+
+    // Returns true if the rider already has a ride that overlaps with this time
+    private boolean riderHasConflict(int riderId, IDateTime pickupTime, IDateTime dropoffTime) {
+        LinkedList<IRide> allRides = rides.getAllAlphabetically();
+
+        if (allRides.empty()) {
+            return false;
+        }
+
+        allRides.findFirst();
+
+        while (true) {
+            IRide ride = allRides.retrieve();
+
+            // Checks only the rides this rider is part of.
+            if (ride.hasRider(riderId) && overlaps(ride, pickupTime, dropoffTime)) {
+                return true;
+            }
+
+            if (allRides.last()) {
+                break;
+            }
+
+            allRides.findNext();
+        }
+
+        return false;
+    }
+
+    // Returns true if the driver already has a ride that overlaps with this time
+    private boolean driverHasConflict(int driverId, IDateTime pickupTime, IDateTime dropoffTime) {
+        LinkedList<IRide> allRides = rides.getAllAlphabetically();
+
+        if (allRides.empty()) {
+            return false;
+        }
+
+        allRides.findFirst();
+
+        while (true) {
+            IRide ride = allRides.retrieve();
+
+            // Checks only the rides assigned to this driver.
+            if (ride.getDriver().getId() == driverId && overlaps(ride, pickupTime, dropoffTime)) {
+                return true;
+            }
+
+            if (allRides.last()) {
+                break;
+            }
+
+            allRides.findNext();
+        }
+
+        return false;
+    }
 
 }

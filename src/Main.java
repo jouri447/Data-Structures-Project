@@ -12,7 +12,7 @@ system.loadRidersFromCSV("riders_100.csv");
 system.loadDriversFromCSV("drivers_30.csv");
 system.loadRidesFromCSV("rides_40.csv");
 
-int choice;
+int choice = -1;
 
 do {
 
@@ -32,9 +32,252 @@ System.out.println("12. Add a ride");
 System.out.println("0. Exit");
 
 System.out.print("Enter your choice: ");
-choice = Integer.parseInt(input.nextLine());
+
+// Catches wrong input (e.g. letters instead of a number) so the program does not crash.
+try {
+choice = Integer.parseInt(input.nextLine().trim());
 
 switch (choice) {
+case 1: {
+// Gets all riders sorted by ID.
+LinkedList<IRider> allRiders = system.getAllRiders();
+
+// Checks if there are no riders.
+if (allRiders.empty()) {
+System.out.println("No riders found.");
+} else {
+
+// Starts from the first rider.
+allRiders.findFirst();
+
+while (true) {
+
+// Prints the current rider.
+System.out.println(allRiders.retrieve());
+
+// Stops after printing the last rider.
+if (allRiders.last()) {
+break;
+}
+
+// Moves to the next rider.
+allRiders.findNext();
+}
+}
+
+break;
+}
+
+case 2: {
+// Asks the user for the home city.
+System.out.print("Enter home city: ");
+String homeCity = input.nextLine().trim();
+
+// Searches for riders from this home city.
+LinkedList<IRider> foundRiders = system.searchRidersByHomeCity(homeCity);
+
+// Checks if no riders were found.
+if (foundRiders.empty()) {
+System.out.println("No riders found.");
+} else {
+
+// Starts from the first matching rider.
+foundRiders.findFirst();
+
+while (true) {
+
+// Prints the current rider.
+System.out.println(foundRiders.retrieve());
+
+// Stops after the last rider.
+if (foundRiders.last()) {
+break;
+}
+
+// Moves to the next rider.
+foundRiders.findNext();
+}
+}
+
+break;
+}
+
+case 3: {
+// Asks the user for the rider's full name.
+System.out.print("Enter rider full name: ");
+String riderName = input.nextLine().trim();
+
+// Searches for riders with exactly this full name.
+LinkedList<IRider> foundRiders = system.searchRidersByName(riderName);
+
+// Checks if no riders were found.
+if (foundRiders.empty()) {
+System.out.println("No riders found.");
+} else {
+
+// Starts from the first matching rider.
+foundRiders.findFirst();
+
+while (true) {
+
+// Prints the current rider.
+System.out.println(foundRiders.retrieve());
+
+// Stops after the last rider.
+if (foundRiders.last()) {
+break;
+}
+
+// Moves to the next rider.
+foundRiders.findNext();
+}
+}
+
+break;
+}
+
+case 4: {
+// Gets the rider's information from the user.
+System.out.print("Enter rider ID: ");
+int riderId = Integer.parseInt(input.nextLine().trim());
+
+System.out.print("Enter rider full name: ");
+String riderName = input.nextLine().trim();
+
+System.out.print("Enter rider email: ");
+String riderEmail = input.nextLine().trim();
+
+System.out.print("Enter rider phone (10 digits): ");
+String riderPhone = input.nextLine().trim();
+
+System.out.print("Enter home city: ");
+String homeCity = input.nextLine().trim();
+
+try {
+// Creates the rider (throws an exception if the phone number is invalid).
+IRider rider = new Rider(riderId, riderName, riderEmail, riderPhone, homeCity);
+
+// Adds the rider (fails if the ID or email already exists).
+if (system.addRider(rider)) {
+System.out.println("Rider added successfully.");
+} else {
+System.out.println("Failed to add rider: ID or email already exists.");
+}
+
+} catch (IllegalArgumentException e) {
+System.out.println("Failed to add rider: " + e.getMessage());
+}
+
+break;
+}
+
+    case 5: {
+    // List all drivers
+    LinkedList<IDriver> allDrivers = system.getAllDrivers();
+
+    if (allDrivers.empty()) {
+        System.out.println("No drivers found.");
+    } else {
+        allDrivers.findFirst();
+
+        while (true) {
+            System.out.println(allDrivers.retrieve());
+
+            if (allDrivers.last()) {
+                break;
+            }
+
+            allDrivers.findNext();
+        }
+    }
+
+    break;
+}
+
+case 6: {
+    // Search drivers by vehicle type
+    System.out.println("Available vehicle types:");
+    System.out.println("SEDAN");
+    System.out.println("LUXURY_SEDAN");
+    System.out.println("SUV");
+    System.out.println("VAN");
+
+    System.out.print("Enter vehicle type: ");
+    String typeText = input.nextLine().trim().toUpperCase();
+
+    try {
+        VehicleType type = VehicleType.valueOf(typeText);
+
+        LinkedList<IDriver> foundDrivers =
+                system.searchDriversByVehicleType(type);
+
+        if (foundDrivers.empty()) {
+            System.out.println("No drivers found.");
+        } else {
+            foundDrivers.findFirst();
+
+            while (true) {
+                System.out.println(foundDrivers.retrieve());
+
+                if (foundDrivers.last()) {
+                    break;
+                }
+
+                foundDrivers.findNext();
+            }
+        }
+
+    } catch (IllegalArgumentException e) {
+        System.out.println("Invalid vehicle type.");
+    }
+
+    break;
+}
+
+case 7: {
+    // Add a driver
+    System.out.print("Enter driver ID: ");
+    int driverId = Integer.parseInt(input.nextLine());
+
+    System.out.print("Enter driver name: ");
+    String driverName = input.nextLine();
+
+    System.out.print("Enter driver phone: ");
+    String driverPhone = input.nextLine();
+
+    System.out.print("Enter vehicle plate: ");
+    String vehiclePlate = input.nextLine();
+
+    System.out.print(
+            "Enter vehicle type (SEDAN, LUXURY_SEDAN, SUV, VAN): ");
+    String typeText = input.nextLine().trim().toUpperCase();
+
+    try {
+        VehicleType vehicleType = VehicleType.valueOf(typeText);
+
+        IDriver driver = new Driver(
+                driverId,
+                driverName,
+                driverPhone,
+                vehiclePlate,
+                vehicleType
+        );
+
+        boolean added = system.addDriver(driver);
+
+        if (added) {
+            System.out.println("Driver added successfully.");
+        } else {
+            System.out.println("Failed to add driver: ID or plate already exists.");
+        }
+
+    } catch (IllegalArgumentException e) {
+        // Shows the real reason: invalid vehicle type, phone number, or plate.
+        System.out.println("Failed to add driver: " + e.getMessage());
+    }
+
+    break;
+}
 
 case 8: {
 // Gets all rides sorted alphabetically by pickup location.
@@ -192,28 +435,22 @@ String dropoffLocation = input.nextLine();
 // Gets the pickup date and time.
 System.out.print("Enter pickup date and time (MM/DD/YYYY HH:MM): ");
 String pickupText = input.nextLine();
-String[] pickup = pickupText.split("[/ :]");
-
-IDateTime pickupTime = new DateTime(
-Integer.parseInt(pickup[2]),
-Integer.parseInt(pickup[0]),
-Integer.parseInt(pickup[1]),
-Integer.parseInt(pickup[3]),
-Integer.parseInt(pickup[4])
-);
 
 // Gets the dropoff date and time.
 System.out.print("Enter dropoff date and time (MM/DD/YYYY HH:MM): ");
 String dropoffText = input.nextLine();
-String[] dropoff = dropoffText.split("[/ :]");
 
-IDateTime dropoffTime = new DateTime(
-Integer.parseInt(dropoff[2]),
-Integer.parseInt(dropoff[0]),
-Integer.parseInt(dropoff[1]),
-Integer.parseInt(dropoff[3]),
-Integer.parseInt(dropoff[4])
-);
+IDateTime pickupTime;
+IDateTime dropoffTime;
+
+// Stops if a date is not in the MM/DD/YYYY HH:MM format.
+try {
+pickupTime = new DateTime(pickupText);
+dropoffTime = new DateTime(dropoffText);
+} catch (Exception e) {
+System.out.println("Invalid date. Use the format MM/DD/YYYY HH:MM (e.g. 10/28/2026 08:45).");
+break;
+}
 
 // Gets the driver ID.
 System.out.print("Enter driver ID: ");
@@ -283,6 +520,14 @@ break;
 
 default:
 System.out.println("Invalid choice.");
+}
+
+} catch (NumberFormatException e) {
+// A number was expected but the user typed something else.
+System.out.println("Invalid input: please enter a number.");
+} catch (Exception e) {
+// Any other wrong input (e.g. a date not in the MM/DD/YYYY HH:MM format).
+System.out.println("Invalid input: please check the format and try again.");
 }
 
 } while (choice != 0);
