@@ -1,17 +1,23 @@
+/**
+ * A shared ride (carpool) with several riders stored in a LinkedList.
+ */
 public class SharedRide extends Ride implements ISharedRide {
 
     private LinkedList<IRider> riders;
 
+    // Creates a shared ride with an empty list of participants
     public SharedRide(String from, IDateTime departure,IDateTime arrival, String to,IDriver assignedDriver) {
 
         super(from, departure, arrival, to, assignedDriver);
         riders = new LinkedList<IRider>();
     }
 
+    // Returns the list of riders in this ride
     public LinkedList<IRider> getParticipants() {
         return riders;
     }
 
+    // Adds a rider at the end of the list; fails if the rider is already in the ride
     public boolean addParticipant(IRider newRider) {
 
         if (hasRider(newRider.getId())) {
@@ -33,6 +39,7 @@ public class SharedRide extends Ride implements ISharedRide {
         return true;
     }
 
+    // Removes the rider with this ID; returns false if not found
     public boolean removeParticipantById(int riderId) {
 
         if (riders.empty()) {
@@ -59,10 +66,12 @@ public class SharedRide extends Ride implements ISharedRide {
         return false;
     }
 
+    // Returns true if no riders are left
     public boolean isEmpty() {
         return riders.empty();
     }
 
+    // Returns true if a rider with this ID is in the ride
     public boolean hasRider(int riderId) {
 
         if (riders.empty()) {
@@ -83,6 +92,7 @@ public class SharedRide extends Ride implements ISharedRide {
         return riders.retrieve().getId() == riderId;
     }
 
+    // Returns the ride details including all riders
     public String toString() {
 
         String result = "Shared " + super.toString() + " | Riders: ";

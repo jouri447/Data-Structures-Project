@@ -99,250 +99,250 @@ public class RideSharingSystem implements IRideSharingSystem {
         return riders.getAll();
     }
 
-// Loads rides from a CSV file and schedules each ride
-public boolean loadRidesFromCSV(String ridesFilePath) {
-try {
-Scanner file = new Scanner(new File(ridesFilePath));
-boolean allLoaded = true;
+    // Loads rides from a CSV file and schedules each ride
+    public boolean loadRidesFromCSV(String ridesFilePath) {
+        try {
+            Scanner file = new Scanner(new File(ridesFilePath));
+            boolean allLoaded = true;
 
-// Reads the file line by line.
-while (file.hasNextLine()) {
-String[] f = file.nextLine().split(",");
+            // Reads the file line by line.
+            while (file.hasNextLine()) {
+                String[] f = file.nextLine().split(",");
 
-try {
-// Creates the pickup and dropoff times from the text "MM/DD/YYYY HH:MM".
-IDateTime pickupTime = new DateTime(f[2]);
-IDateTime dropoffTime = new DateTime(f[3]);
+                try {
+                    // Creates the pickup and dropoff times from the text "MM/DD/YYYY HH:MM".
+                    IDateTime pickupTime = new DateTime(f[2]);
+                    IDateTime dropoffTime = new DateTime(f[3]);
 
-// Gets the driver ID and separates the rider IDs.
-int driverId = Integer.parseInt(f[5].trim());
-String[] ids = f[6].trim().split(";");
+                    // Gets the driver ID and separates the rider IDs.
+                    int driverId = Integer.parseInt(f[5].trim());
+                    String[] ids = f[6].trim().split(";");
 
-boolean scheduled = false;
+                    boolean scheduled = false;
 
-// A private ride has only one rider.
-if (f[0].equals("PRIVATE")) {
-int riderId = Integer.parseInt(ids[0]);
+                    // A private ride has only one rider.
+                    if (f[0].equals("PRIVATE")) {
+                        int riderId = Integer.parseInt(ids[0]);
 
-// Checks and schedules the private ride.
-scheduled = schedulePrivateRide(f[1], pickupTime, dropoffTime, f[4], riderId, driverId);
-}
-else if (f[0].equals("SHARED")) {
+                        // Checks and schedules the private ride.
+                        scheduled = schedulePrivateRide(f[1], pickupTime, dropoffTime, f[4], riderId, driverId);
+                    }
+                    else if (f[0].equals("SHARED")) {
 
-// Converts the rider IDs from String to int.
-int[] riderIds = new int[ids.length];
+                        // Converts the rider IDs from String to int.
+                        int[] riderIds = new int[ids.length];
 
-for (int i = 0; i < ids.length; i++) {
-riderIds[i] = Integer.parseInt(ids[i]);
-}
+                        for (int i = 0; i < ids.length; i++) {
+                            riderIds[i] = Integer.parseInt(ids[i]);
+                        }
 
-// Checks and schedules the shared ride.
-scheduled = scheduleSharedRide(f[1], pickupTime, dropoffTime, f[4], riderIds, driverId);
-}
+                        // Checks and schedules the shared ride.
+                        scheduled = scheduleSharedRide(f[1], pickupTime, dropoffTime, f[4], riderIds, driverId);
+                    }
 
-// Marks the loading as failed if a ride was not scheduled.
-if (!scheduled) {
-allLoaded = false;
-}
-}
-catch (Exception e) {
-// Continues reading if a line has invalid data.
-allLoaded = false;
-}
-}
+                    // Marks the loading as failed if a ride was not scheduled.
+                    if (!scheduled) {
+                        allLoaded = false;
+                    }
+                }
+                catch (Exception e) {
+                    // Continues reading if a line has invalid data.
+                    allLoaded = false;
+                }
+            }
 
-file.close();
+            file.close();
 
-// Returns true if all rides were loaded successfully.
-return allLoaded;
-}
-catch (FileNotFoundException e) {
-// Returns false if the file cannot be found.
-return false;
-}
-}
+            // Returns true if all rides were loaded successfully.
+            return allLoaded;
+        }
+        catch (FileNotFoundException e) {
+            // Returns false if the file cannot be found.
+            return false;
+        }
+    }
 
-// Removes a rider and updates all rides involving them
-public boolean removeRider(int riderId) {
+    // Removes a rider and updates all rides involving them
+    public boolean removeRider(int riderId) {
 
-// Checks if the rider exists.
-IRider rider = riders.findById(riderId);
+        // Checks if the rider exists.
+        IRider rider = riders.findById(riderId);
 
-if (rider == null) {
-return false;
-}
+        if (rider == null) {
+            return false;
+        }
 
-// Gets all rides to check which ones involve this rider.
-LinkedList<IRide> allRides = rides.getAllAlphabetically();
+        // Gets all rides to check which ones involve this rider.
+        LinkedList<IRide> allRides = rides.getAllAlphabetically();
 
-if (!allRides.empty()) {
-allRides.findFirst();
+        if (!allRides.empty()) {
+            allRides.findFirst();
 
-while (true) {
-IRide ride = allRides.retrieve();
+            while (true) {
+                IRide ride = allRides.retrieve();
 
-// Checks if the rider is part of this ride.
-if (ride.hasRider(riderId)) {
+                // Checks if the rider is part of this ride.
+                if (ride.hasRider(riderId)) {
 
-if (ride instanceof IPrivateRide) {
+                    if (ride instanceof IPrivateRide) {
 
-// Removes the private ride completely (also from the driver's history).
-deleteRide(ride);
-}
-else if (ride instanceof ISharedRide) {
-ISharedRide sharedRide = (ISharedRide) ride;
+                        // Removes the private ride completely (also from the driver's history).
+                        deleteRide(ride);
+                    }
+                    else if (ride instanceof ISharedRide) {
+                        ISharedRide sharedRide = (ISharedRide) ride;
 
-// Removes the rider from the shared ride.
-sharedRide.removeParticipantById(riderId);
+                        // Removes the rider from the shared ride.
+                        sharedRide.removeParticipantById(riderId);
 
-// Removes the shared ride if no participants remain.
-if (sharedRide.isEmpty()) {
-deleteRide(ride);
-}
-}
-}
+                        // Removes the shared ride if no participants remain.
+                        if (sharedRide.isEmpty()) {
+                            deleteRide(ride);
+                        }
+                    }
+                }
 
-// Stops after checking the last ride.
-if (allRides.last()) {
-break;
-}
+                // Stops after checking the last ride.
+                if (allRides.last()) {
+                    break;
+                }
 
-allRides.findNext();
-}
-}
+                allRides.findNext();
+            }
+        }
 
-// Removes the rider from the rider list.
-return riders.removeById(riderId);
-}
+        // Removes the rider from the rider list.
+        return riders.removeById(riderId);
+    }
 
-// Removes a driver and all rides assigned to them
-public boolean removeDriver(int driverId) {
+    // Removes a driver and all rides assigned to them
+    public boolean removeDriver(int driverId) {
 
-// Checks if the driver exists
-IDriver driver = drivers.findById(driverId);
+        // Checks if the driver exists
+        IDriver driver = drivers.findById(driverId);
 
-if (driver == null) {
-return false;
-}
+        if (driver == null) {
+            return false;
+        }
 
-// Gets all rides to check which ones belong to this driver
-LinkedList<IRide> allRides = rides.getAllAlphabetically();
+        // Gets all rides to check which ones belong to this driver
+        LinkedList<IRide> allRides = rides.getAllAlphabetically();
 
-if (!allRides.empty()) {
-allRides.findFirst();
+        if (!allRides.empty()) {
+            allRides.findFirst();
 
-while (true) {
-IRide ride = allRides.retrieve();
+            while (true) {
+                IRide ride = allRides.retrieve();
 
-// Checks if the ride belongs to this driver
-if (ride.getDriver().getId() == driverId) {
+                // Checks if the ride belongs to this driver
+                if (ride.getDriver().getId() == driverId) {
 
-// Removes the ride from the ride list and from the riders' histories
-deleteRide(ride);
-}
+                    // Removes the ride from the ride list and from the riders' histories
+                    deleteRide(ride);
+                }
 
-// Stops after checking the last ride
-if (allRides.last()) {
-break;
-}
+                // Stops after checking the last ride
+                if (allRides.last()) {
+                    break;
+                }
 
-allRides.findNext();
-}
-}
+                allRides.findNext();
+            }
+        }
 
-// Removes the driver from the driver list
-return drivers.removeById(driverId);
-}
+        // Removes the driver from the driver list
+        return drivers.removeById(driverId);
+    }
 
-// Searches for all rides starting from a given pickup location
-public LinkedList<IRide> searchRidesByPickupLocation(String pickupLocation) {
+    // Searches for all rides starting from a given pickup location
+    public LinkedList<IRide> searchRidesByPickupLocation(String pickupLocation) {
 
-// Uses RideList to find rides with the matching pickup location
-return rides.findByPickupLocation(pickupLocation);
-}
+        // Uses RideList to find rides with the matching pickup location
+        return rides.findByPickupLocation(pickupLocation);
+    }
 
-// Searches for all rides involving a rider with the given name
-public LinkedList<IRide> searchRidesByRiderName(String riderName) {
-// Uses RideList to find all rides involving this rider
-return rides.findByRiderName(riderName);
-}
+    // Searches for all rides involving a rider with the given name
+    public LinkedList<IRide> searchRidesByRiderName(String riderName) {
+        // Uses RideList to find all rides involving this rider
+        return rides.findByRiderName(riderName);
+    }
 
-// Returns participants from all shared rides without duplicates
-public LinkedList<IRider> getSharedRideParticipants(String pickupLocation) {
-// Creates an empty list to store the participants
-LinkedList<IRider> result = new LinkedList<IRider>();
+    // Returns participants from all shared rides without duplicates
+    public LinkedList<IRider> getSharedRideParticipants(String pickupLocation) {
+        // Creates an empty list to store the participants
+        LinkedList<IRider> result = new LinkedList<IRider>();
 
-// Finds all rides starting from the given location
-LinkedList<IRide> found = rides.findByPickupLocation(pickupLocation);
+        // Finds all rides starting from the given location
+        LinkedList<IRide> found = rides.findByPickupLocation(pickupLocation);
 
-// Returns an empty list if no rides were found
-if (found.empty()) {
-return result;
-}
+        // Returns an empty list if no rides were found
+        if (found.empty()) {
+            return result;
+        }
 
-// Goes through all matching rides
-found.findFirst();
-while (true) {
-IRide ride = found.retrieve();
+        // Goes through all matching rides
+        found.findFirst();
+        while (true) {
+            IRide ride = found.retrieve();
 
-// Checks if the ride is shared
-if (ride instanceof ISharedRide) {
-ISharedRide sharedRide = (ISharedRide) ride;
+            // Checks if the ride is shared
+            if (ride instanceof ISharedRide) {
+                ISharedRide sharedRide = (ISharedRide) ride;
 
-// Gets the participants of the shared ride
-LinkedList<IRider> participants = sharedRide.getParticipants();
+                // Gets the participants of the shared ride
+                LinkedList<IRider> participants = sharedRide.getParticipants();
 
-if (!participants.empty()) {
-participants.findFirst();
-while (true) {
-IRider rider = participants.retrieve();
-boolean exists = false;
+                if (!participants.empty()) {
+                    participants.findFirst();
+                    while (true) {
+                        IRider rider = participants.retrieve();
+                        boolean exists = false;
 
-// Checks if the rider is already in the result list
-if (!result.empty()) {
-result.findFirst();
-while (true) {
-if (result.retrieve().getId() == rider.getId()) {
-exists = true;
-break;
-}
-if (result.last()) {
-break;
-}
-result.findNext();
-}
-}
+                        // Checks if the rider is already in the result list
+                        if (!result.empty()) {
+                            result.findFirst();
+                            while (true) {
+                                if (result.retrieve().getId() == rider.getId()) {
+                                    exists = true;
+                                    break;
+                                }
+                                if (result.last()) {
+                                    break;
+                                }
+                                result.findNext();
+                            }
+                        }
 
-// Adds the rider only if not already included
-if (!exists) {
-result.insert(rider);
-}
+                        // Adds the rider only if not already included
+                        if (!exists) {
+                            result.insert(rider);
+                        }
 
-// Moves to the next participant
-if (participants.last()) {
-break;
-}
-participants.findNext();
-}
-}
-}
+                        // Moves to the next participant
+                        if (participants.last()) {
+                            break;
+                        }
+                        participants.findNext();
+                    }
+                }
+            }
 
-// Moves to the next ride
-if (found.last()) {
-break;
-}
-found.findNext();
-}
+            // Moves to the next ride
+            if (found.last()) {
+                break;
+            }
+            found.findNext();
+        }
 
-// Returns all participants without duplicates
-return result;
-}
+        // Returns all participants without duplicates
+        return result;
+    }
 
-// Returns all rides sorted alphabetically by pickup location
-public LinkedList<IRide> getAllRidesAlphabetically() {
-// Gets the sorted rides from RideList
-return rides.getAllAlphabetically();
-}
+    // Returns all rides sorted alphabetically by pickup location
+    public LinkedList<IRide> getAllRidesAlphabetically() {
+        // Gets the sorted rides from RideList
+        return rides.getAllAlphabetically();
+    }
 
     // Loads drivers from a CSV file (driverId,name,phoneNumber,vehiclePlate,vehicleType)
     public boolean loadDriversFromCSV(String driversFilePath) {

@@ -1,14 +1,20 @@
 
+/**
+ * Linked list of rides kept in alphabetical order by pickup location.
+ * Uses the LinkedList (ADT List) implementation from the lectures.
+ */
 public class RideList implements IRideList {
 
     private LinkedList<IRide> rides;
     private int count;
 
+    // Creates an empty ride list
     public RideList() {
         rides = new LinkedList<IRide>();
         count = 0;
     }
 
+    // Inserts the ride in alphabetical order by pickup location
     public boolean addRide(IRide newRide) {
 
         if (newRide == null) {
@@ -56,6 +62,7 @@ public class RideList implements IRideList {
         return true;
     }
 
+    // Removes the ride with this ID; returns false if not found
     public boolean removeRideById(int rideId) {
 
         if (rides.empty()) {
@@ -84,6 +91,7 @@ public class RideList implements IRideList {
         return false;
     }
 
+    // Returns a copy of all rides in alphabetical order (one pass, O(n))
     public LinkedList<IRide> getAllAlphabetically() {
 
         LinkedList<IRide> result = new LinkedList<IRide>();
@@ -104,6 +112,7 @@ public class RideList implements IRideList {
         return result;
     }
 
+    // Returns all rides with this pickup location
     public LinkedList<IRide> findByPickupLocation(String pickupLocation) {
 
         LinkedList<IRide> result = new LinkedList<IRide>();
@@ -130,6 +139,7 @@ public class RideList implements IRideList {
         return result;
     }
 
+    // Returns all rides that include a rider with this full name
     public LinkedList<IRide> findByRiderName(String riderFullName) {
 
         LinkedList<IRide> result = new LinkedList<IRide>();
@@ -156,6 +166,7 @@ public class RideList implements IRideList {
         return result;
     }
 
+    // Returns true if the ride (private or shared) has a rider with this name
     private boolean containsRiderName(IRide ride, String riderName) {
 
         if (ride instanceof IPrivateRide) {
@@ -192,6 +203,7 @@ public class RideList implements IRideList {
         return false;
     }
 
+    // Returns the number of rides stored
     public int size() {
         return count;
     }
